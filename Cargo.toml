@@ -1,0 +1,29 @@
+[package]
+name = "autonomy"
+version = "0.1.0"
+authors = ["Eduardo Braun <eduardotbraun@gmail.com>"]
+edition = "2018"
+
+[profile.release]
+debug = true
+
+[[bin]]
+name = "game"
+path = "./bin/game/game.rs"
+
+[features]
+default = []
+profile = ["profiling/profile-with-tracy"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+winit = "0.24.0"
+wgpu = "0.8.1"
+futures = "*"
+log = "*"
+env_logger = "*"
+
+[dependencies.profiling]
+version = "1.0.1"
+default-features = false
