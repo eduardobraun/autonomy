@@ -1,4 +1,4 @@
-use autonomy::ScreenTargets;
+use autonomy::{Autonomy, ScreenTargets};
 use futures::executor::LocalPool;
 use winit::{
     event,
@@ -79,6 +79,8 @@ pub fn main_loop() {
 
         let mut last_time = time::Instant::now();
         let mut needs_reload = false;
+
+        let app = Autonomy::new();
 
         event_loop.run(move |event, _, control_flow| {
             let _ = window;
@@ -162,7 +164,7 @@ pub fn main_loop() {
                                 color: frame.clone(),
                                 depth: depth_target.clone(),
                             });
-                            let render_command_buffer = task_pool.run_until(autonomy::render_stuff(&device, targets));
+                            let render_command_buffer = task_pool.run_until(app.draw(&device, targets));
                             queue.submit(Some(render_command_buffer));
                         }
                         Err(_) => {}
