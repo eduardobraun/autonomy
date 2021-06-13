@@ -23,7 +23,4 @@ wgpu = "0.8.1"
 futures = "*"
 log = "*"
 env_logger = "*"
-
-[dependencies.profiling]
-version = "1.0.1"
-default-features = false
+profiling = "1.0.1"

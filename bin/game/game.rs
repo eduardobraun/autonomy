@@ -1,3 +1,4 @@
+use autonomy::ScreenTargets;
 use futures::executor::LocalPool;
 use winit::{
     event,
@@ -15,7 +16,9 @@ fn main() {
 
 pub const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Bgra8Unorm;
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
+use profiling;
 
+#[profiling::function]
 pub fn main_loop() {
     use std::time;
     let event_loop = EventLoop::new();
@@ -39,7 +42,8 @@ pub fn main_loop() {
             .expect("Unable to initialize GPU via the selected backend.");
 
         let mut limits = wgpu::Limits::default();
-        let (device, queue) = task_pool
+        let (device, queue) = {
+            let (d, q) = task_pool
             .run_until(adapter.request_device(
                 &wgpu::DeviceDescriptor {
                     label: None,
@@ -49,6 +53,8 @@ pub fn main_loop() {
                 None,
             ))
             .unwrap();
+            (Arc::new(d), Arc::new(q))
+        };
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
@@ -58,7 +64,7 @@ pub fn main_loop() {
             present_mode: wgpu::PresentMode::Mailbox,
         };
         let mut swap_chain = device.create_swap_chain(&surface, &sc_desc);
-        let mut depth_target = device
+        let mut depth_target = Arc::new(device
             .create_texture(&wgpu::TextureDescriptor {
                 label: Some("Depth"),
                 size: extent,
@@ -68,7 +74,7 @@ pub fn main_loop() {
                 format: DEPTH_FORMAT,
                 usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
             })
-            .create_view(&wgpu::TextureViewDescriptor::default());
+            .create_view(&wgpu::TextureViewDescriptor::default()));
 
 
         let mut last_time = time::Instant::now();
@@ -98,7 +104,7 @@ pub fn main_loop() {
                         present_mode: wgpu::PresentMode::Mailbox,
                     };
                     swap_chain = device.create_swap_chain(&surface, &sc_desc);
-                    depth_target = device
+                    depth_target = Arc::new(device
                         .create_texture(&wgpu::TextureDescriptor {
                             label: Some("Depth"),
                             size: extent,
@@ -108,7 +114,7 @@ pub fn main_loop() {
                             format: DEPTH_FORMAT,
                             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
                         })
-                        .create_view(&wgpu::TextureViewDescriptor::default());
+                        .create_view(&wgpu::TextureViewDescriptor::default()));
                     // app.resize(&device, extent);
                 }
                 event::Event::WindowEvent { event, .. } => match event {
@@ -150,13 +156,14 @@ pub fn main_loop() {
 
                     match swap_chain.get_current_frame() {
                         Ok(frame) => {
-                            // let targets = ScreenTargets {
-                            //     extent,
-                            //     color: &frame.output.view,
-                            //     depth: &depth_target,
-                            // };
-                            // let render_command_buffer = app.draw(&device, targets, &spawner);
-                            // queue.submit(Some(render_command_buffer));
+                            let frame = Arc::new(frame);
+                            let targets = Arc::new(ScreenTargets {
+                                extent,
+                                color: frame.clone(),
+                                depth: depth_target.clone(),
+                            });
+                            let render_command_buffer = task_pool.run_until(autonomy::render_stuff(&device, targets));
+                            queue.submit(Some(render_command_buffer));
                         }
                         Err(_) => {}
                     };
