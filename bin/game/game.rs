@@ -41,7 +41,7 @@ pub fn main_loop() {
             }))
             .expect("Unable to initialize GPU via the selected backend.");
 
-        let mut limits = wgpu::Limits::default();
+        let limits = wgpu::Limits::default();
         let (device, queue) = {
             let (d, q) = task_pool
             .run_until(adapter.request_device(
@@ -80,7 +80,7 @@ pub fn main_loop() {
         let mut last_time = time::Instant::now();
         let mut needs_reload = false;
 
-        let app = Autonomy::new();
+        let app = Autonomy::new(&device, COLOR_FORMAT);
 
         event_loop.run(move |event, _, control_flow| {
             let _ = window;
@@ -146,10 +146,10 @@ pub fn main_loop() {
                     _ => {}
                 },
                 event::Event::MainEventsCleared => {
-                    let spawner = task_pool.spawner();
+                    let _spawner = task_pool.spawner();
                     let duration = time::Instant::now() - last_time;
                     last_time += duration;
-                    let delta = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1.0e-9;
+                    let _delta = duration.as_secs() as f32 + duration.subsec_nanos() as f32 * 1.0e-9;
 
                     // let update_command_buffers = app.update(&device, delta, &spawner);
                     // if !update_command_buffers.is_empty() {
@@ -165,7 +165,7 @@ pub fn main_loop() {
                                 depth: depth_target.clone(),
                             });
                             let render_command_buffer = task_pool.run_until(app.draw(&device, targets));
-                            queue.submit(Some(render_command_buffer));
+                            queue.submit(render_command_buffer);
                         }
                         Err(_) => {}
                     };
