@@ -10,40 +10,35 @@ pub struct ScreenTargets {
     pub depth: Arc<wgpu::TextureView>,
 }
 
-// let render_command_buffer = app.draw(&device, targets, &spawner);
-pub async fn render_stuff(
+pub async fn clear_screen(
     device: &wgpu::Device,
     targets: Arc<ScreenTargets>,
-    render_pipeline: &wgpu::RenderPipeline,
+    color: wgpu::Color,
 ) -> wgpu::CommandBuffer {
     let mut encoder =
         device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
-        let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[wgpu::RenderPassColorAttachment {
                 view: &targets.color.output.view,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLUE),
+                    load: wgpu::LoadOp::Clear(color),
                     store: true,
                 },
             }],
             depth_stencil_attachment: None,
         });
-        rpass.set_pipeline(&render_pipeline);
-        rpass.draw(0..3, 0..1);
     }
     encoder.finish()
 }
 
-pub struct Autonomy {
-    shader: ShaderModule,
-    pipeline_layout: wgpu::PipelineLayout,
+pub struct Triangle {
     render_pipeline: wgpu::RenderPipeline,
 }
 
-impl Autonomy {
+impl Triangle {
     pub fn new(device: &wgpu::Device, color_format: wgpu::TextureFormat) -> Self {
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
             label: None,
@@ -75,14 +70,50 @@ impl Autonomy {
         multisample: wgpu::MultisampleState::default(),
         });
 
+        Self { render_pipeline }
+    }
+
+    pub async fn draw(&self, device: &wgpu::Device, targets: Arc<ScreenTargets>) -> CommandBuffer {
+        let mut encoder =
+            device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+        {
+            let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: None,
+                color_attachments: &[wgpu::RenderPassColorAttachment {
+                    view: &targets.color.output.view,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Load,
+                        store: true,
+                    },
+                }],
+                depth_stencil_attachment: None,
+            });
+            rpass.set_pipeline(&self.render_pipeline);
+            rpass.draw(0..3, 0..1);
+        }
+        encoder.finish()
+    }
+}
+
+pub struct Autonomy {
+    triangle: Triangle
+}
+
+impl Autonomy {
+    pub fn new(device: &wgpu::Device, color_format: wgpu::TextureFormat) -> Self {
+
+        let triangle = Triangle::new(device, color_format);
         Autonomy {
-            shader,
-            pipeline_layout,
-            render_pipeline,
+            triangle
         }
     }
 
     pub async fn draw(&self, device: &wgpu::Device, targets: Arc<ScreenTargets>) -> Vec<CommandBuffer> {
-        vec![render_stuff(device, targets, &self.render_pipeline).await]
+        // TODO: should use spawn
+        let f1 = clear_screen(device, targets.clone(), wgpu::Color::BLUE);
+        let f2 = self.triangle.draw(device, targets.clone());
+        let (b1, b2) = futures::join!(f1,f2);
+        vec![b1, b2]
     }
 }
