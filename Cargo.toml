@@ -25,4 +25,4 @@ log = "*"
 env_logger = "*"
 profiling = "1.0.1"
 cgmath = "*"
-bytemuck = "*"
+bytemuck = { version = "1.4", features = ["derive"]}

@@ -1,10 +1,13 @@
 use std::borrow::Cow;
 use std::sync::Arc;
 
-use wgpu::{BindGroup, BindGroupLayout, CommandBuffer};
-use wgpu::ShaderModule;
+use bytemuck::{Pod, Zeroable};
+use wgpu::{BindGroup, BindGroupLayout, CommandBuffer, util::DeviceExt};
 
 pub mod camera;
+pub mod terrain;
+use self::terrain::Terrain;
+use self::camera::Camera;
 
 pub struct ScreenTargets {
     pub extent: wgpu::Extent3d,
@@ -20,7 +23,7 @@ pub async fn clear_screen(
     let mut encoder =
         device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
     {
-        let rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+        let _ = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: None,
             color_attachments: &[wgpu::RenderPassColorAttachment {
                 view: &targets.color.output.view,
@@ -99,11 +102,6 @@ impl Triangle {
     }
 }
 
-use camera::Camera;
-use bytemuck::Zeroable;
-use bytemuck::Pod;
-use wgpu::util::{DeviceExt, RenderEncoder};
-
 // We need this for Rust to store our data correctly for the shaders
 #[repr(C)]
 // This is so we can store this in a buffer
@@ -137,6 +135,7 @@ pub struct Autonomy {
     uniforms: Uniforms,
     uniform_buffer: wgpu::Buffer,
     uniform_bind_group: BindGroup,
+    terrain: Terrain,
 }
 
 impl Autonomy {
@@ -188,11 +187,12 @@ impl Autonomy {
             label: Some("uniform_bind_group"),
         });
 
-
         let triangle = Triangle::new(device, color_format, &uniform_bind_group_layout);
+        let terrain = Terrain::new(device, color_format, &uniform_bind_group_layout);
         Autonomy {
             camera,
             triangle,
+            terrain,
             uniforms,
             uniform_buffer,
             uniform_bind_group,
@@ -203,7 +203,8 @@ impl Autonomy {
         // TODO: should use spawn
         let f1 = clear_screen(device, targets.clone(), wgpu::Color::BLUE);
         let f2 = self.triangle.draw(device, targets.clone(), &self.uniform_bind_group);
-        let (b1, b2) = futures::join!(f1,f2);
-        vec![b1, b2]
+        let f3 = self.terrain.draw(device, targets.clone(), &self.uniform_bind_group);
+        let (b1, b2, b3) = futures::join!(f1,f2, f3);
+        vec![b1, b2, b3]
     }
 }
