@@ -80,7 +80,7 @@ pub fn main_loop() {
         let mut last_time = time::Instant::now();
         let mut needs_reload = false;
 
-        let app = Autonomy::new(&device, COLOR_FORMAT);
+        let app = Autonomy::new(&device, &queue, COLOR_FORMAT);
 
         event_loop.run(move |event, _, control_flow| {
             let _ = window;

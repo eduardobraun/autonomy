@@ -139,7 +139,7 @@ pub struct Autonomy {
 }
 
 impl Autonomy {
-    pub fn new(device: &wgpu::Device, color_format: wgpu::TextureFormat) -> Self {
+    pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, color_format: wgpu::TextureFormat) -> Self {
         let camera = Camera{
             eye: (0.0, 1.0, 2.0).into(),
             target: (0.0, 0.0, 0.0).into(),
@@ -188,7 +188,7 @@ impl Autonomy {
         });
 
         let triangle = Triangle::new(device, color_format, &uniform_bind_group_layout);
-        let terrain = Terrain::new(device, color_format, &uniform_bind_group_layout);
+        let terrain = Terrain::new(device, queue, color_format, &uniform_bind_group_layout);
         Autonomy {
             camera,
             triangle,

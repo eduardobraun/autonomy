@@ -26,3 +26,4 @@ env_logger = "*"
 profiling = "1.0.1"
 cgmath = "*"
 bytemuck = { version = "1.4", features = ["derive"]}
+image = "0.23.14"
