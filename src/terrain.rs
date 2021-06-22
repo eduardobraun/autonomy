@@ -1,8 +1,6 @@
 use std::borrow::Cow;
-use std::io::Read;
 use std::sync::Arc;
 
-use futures::io;
 use wgpu::util::DeviceExt;
 use crate::ScreenTargets;
 
@@ -36,9 +34,9 @@ impl Vertex {
 
 const VERTICES: &[Vertex] = &[
     Vertex { position: [-1.0, 0.0, -1.0], tex_coords: [0.0, 0.0] },
-    Vertex { position: [1.0, 0.0, -1.0], tex_coords: [1.0, 0.0] },
-    Vertex { position: [1.0, 0.0, 1.0], tex_coords: [1.0, 1.0] },
-    Vertex { position: [-1.0, 0.0, 1.0], tex_coords: [0.0, 1.0] },
+    Vertex { position: [1.0, 0.0, -1.0], tex_coords: [8.0, 0.0] },
+    Vertex { position: [1.0, 0.0, 1.0], tex_coords: [8.0, 8.0] },
+    Vertex { position: [-1.0, 0.0, 1.0], tex_coords: [0.0, 8.0] },
 ];
 
 const INDICES: &[u16] = &[
@@ -58,59 +56,17 @@ pub struct Terrain {
 impl Terrain {
     pub fn new(device: &wgpu::Device, queue: &wgpu::Queue, color_format: wgpu::TextureFormat, uniforms_bgl: &wgpu::BindGroupLayout) -> Self {
         let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
-            label: None,
+            label: Some("terrain shader"),
             source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(include_str!("../res/shader/terrain.wgsl"))),
             flags: wgpu::ShaderFlags::all(),
         });
 
-        let f = std::fs::File::open("./res/textures/prototype/Dark/texture_01.png").expect("failed to open file");
-        // let diffuse_image = image::load_from_memory(diffuse_bytes).unwrap();
-        let reader = std::io::BufReader::new(f);
-        let diffuse_image = image::load(reader, image::ImageFormat::Png).expect("failed to read file");
-        let diffuse_rgba = diffuse_image.to_rgba8();
-
-        use image::GenericImageView;
-        let dimensions = diffuse_image.dimensions();
-
-        let texture_size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
-        let diffuse_texture = device.create_texture(
-            &wgpu::TextureDescriptor {
-                size: texture_size,
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: wgpu::TextureFormat::Rgba8UnormSrgb,
-                usage: wgpu::TextureUsage::SAMPLED | wgpu::TextureUsage::COPY_DST,
-                label: Some("diffuse_texture"),
-            }
-        );
-
-        queue.write_texture(
-            // Tells wgpu where to copy the pixel data
-            wgpu::ImageCopyTexture {
-                texture: &diffuse_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            // The actual pixel data
-            &diffuse_rgba,
-            // The layout of the texture
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * dimensions.0),
-                rows_per_image: std::num::NonZeroU32::new(dimensions.1),
-            },
-            texture_size,
-        );
+        let diffuse_texture = crate::helpers::load_texture("prototype/Light/texture_07.png".to_string(), device, queue);
 
         let diffuse_texture_view = diffuse_texture.create_view(&wgpu::TextureViewDescriptor::default());
         let diffuse_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
-            address_mode_u: wgpu::AddressMode::ClampToEdge,
-            address_mode_v: wgpu::AddressMode::ClampToEdge,
+            address_mode_u: wgpu::AddressMode::Repeat,
+            address_mode_v: wgpu::AddressMode::Repeat,
             address_mode_w: wgpu::AddressMode::ClampToEdge,
             mag_filter: wgpu::FilterMode::Linear,
             min_filter: wgpu::FilterMode::Nearest,

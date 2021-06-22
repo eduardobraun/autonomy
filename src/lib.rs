@@ -5,6 +5,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::{BindGroup, BindGroupLayout, CommandBuffer, util::DeviceExt};
 
 pub mod camera;
+pub(crate) mod helpers;
 pub mod terrain;
 use self::terrain::Terrain;
 use self::camera::Camera;
@@ -201,7 +202,7 @@ impl Autonomy {
 
     pub async fn draw(&self, device: &wgpu::Device, targets: Arc<ScreenTargets>) -> Vec<CommandBuffer> {
         // TODO: should use spawn
-        let f1 = clear_screen(device, targets.clone(), wgpu::Color::BLUE);
+        let f1 = clear_screen(device, targets.clone(), wgpu::Color{ r: 0.2, g: 0.2, b: 0.2, a: 1.0 });
         let f2 = self.triangle.draw(device, targets.clone(), &self.uniform_bind_group);
         let f3 = self.terrain.draw(device, targets.clone(), &self.uniform_bind_group);
         let (b1, b2, b3) = futures::join!(f1,f2, f3);
